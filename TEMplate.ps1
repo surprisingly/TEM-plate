@@ -1,5 +1,6 @@
 #Load forms type
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
 #instantiate the form
 $form = New-Object System.Windows.Forms.Form
@@ -7,20 +8,20 @@ $form = New-Object System.Windows.Forms.Form
 $form.Text = "Select Images"
 
 #instantiate a label to appear on the image
-$instructs = new-object System.Windows.Forms.Label
+#$instructs = new-object System.Windows.Forms.Label
 #set the instruction background to yellow
-$instructs.backcolor = "Yellow"
+#$instructs.backcolor = "Yellow"
 #set the instruction text
-$instructs.text = "Select the images"
+#$instructs.text = "Select the images"
 #set alignment of the instruction text
-$instructs.textalign = "MiddleCenter"
+#$instructs.textalign = "MiddleCenter"
 #set x position of the instructions
-$instructs.left = 10
+#$instructs.left = 10
 #set y position of the instructions
-$instructs.top = 10
+#$instructs.top = 10
 
 #add the instructions to the form
-$form.controls.add($instructs)
+#$form.controls.add($instructs)
 
 #instantiate a file selection dialog box
 $file_select = New-Object System.Windows.Forms.OpenFileDialog
@@ -44,8 +45,24 @@ $global:current_image_idx = 0
 
 #set the background of the form to the current image
 function update-bgimage {
-$form.backgroundimage = $images[$global:current_image_idx]
-$form.size = $form.backgroundimage.size
+    $i_h = $images[$global:current_image_idx].Height
+    $i_w = $images[$global:current_image_idx].Width
+    $pic_box = new-object -typename System.Windows.Forms.PictureBox
+    $pic_box.Left = 0
+    $pic_box.Top = 0
+    $pic_box.height = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea.Height
+    $pic_box.width = [math]::floor(($i_w)*($pic_box.height)/($i_h))
+    $pic_box.image = $images[$global:current_image_idx]
+    $pic_box.sizemode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+    $form.controls.add($pic_box)
+    $pic_box.bringtofront()
+    #set the size of the form to match the scaled image (to the monitor height)
+    $form.size = $pic_box.size
+    try {
+        $acceptbut.bringtofront()
+        $chgbut.bringtofront()
+    } catch {
+    }
 }
 update-bgimage
 
@@ -64,7 +81,7 @@ $accept_image = {
         update-bgimage
         #$form.backgroundimage = $images[$current_image_idx]
         #$form.size = $images[$current_image_idx].size
-    }  
+    }
 }
 
 $reject_image = {
@@ -87,6 +104,7 @@ $acceptbut.top = 40
 $acceptbut.left = $form.width - $acceptbut.width - 40
 $acceptbut.text = "Accept"
 $acceptbut.add_click($accept_image)
+$acceptbut.bringtofront()
 
 $chgbut = new-object System.Windows.Forms.Button
 $form.controls.add($chgbut)
@@ -94,4 +112,6 @@ $chgbut.top = 40
 $chgbut.left = 40
 $chgbut.text = "Reject"
 $chgbut.add_click($reject_image)
-$form.ShowDialog()
+$chgbut.bringtofront()
+
+$form.ShowDialog()  
