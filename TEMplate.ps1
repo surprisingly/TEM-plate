@@ -68,6 +68,28 @@ update-bgimage
 
 $global:accepted_idxs = @()
 
+#code block to get data from csv
+$get_temdata {
+	$global:csvpath = ''
+	$files[0].split("\")[0..($files.length)] | % {$csvpath += $_ + "\"}
+	set-location $csvpath
+	$global:csvdata = get-childitem -Name TJ_Etch* | Sort-Object -Descending -Property LastWriteTime | Select-Object -First 1 | import-csv
+	#The keys below are going to match the filename in $files
+	$global:csv_keys = $csvdata | % {$_.Path.split("\")[-1]}
+	#The accepted filename keys are below
+	$global:file_keys = $files | % {$_.Path.split("\")[-1]}
+	#NEXT STEPS: where the csv_keys match the file_keys, grab the rest of the columns from the $csvdata {PC2PC, Tip2Tip, Depth, [waferID]}
+}
+
+#code block to fill the template with the data
+$fill_xls = {
+	$temxls = new-object -ComObject excel.application
+	$temurl = '##########'
+	$temxls.Workbooks.Open($temurl,$false,$true)
+	#not done yet with this code block
+	#$temform = 
+}
+
 $accept_image = {
     $global:accepted_idxs += $global:current_image_idx
     if ($global:current_image_idx -ge ($num_files-1)) {
@@ -98,6 +120,8 @@ $reject_image = {
     #$form.size = $images[$current_image_idx].size
 }
 
+
+
 $acceptbut = new-object system.windows.forms.button
 $form.controls.add($acceptbut)
 $acceptbut.top = 40
@@ -114,4 +138,4 @@ $chgbut.text = "Reject"
 $chgbut.add_click($reject_image)
 $chgbut.bringtofront()
 
-$form.ShowDialog()  
+$form.ShowDialog()
