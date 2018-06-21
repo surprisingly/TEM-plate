@@ -69,25 +69,28 @@ update-bgimage
 $global:accepted_idxs = @()
 
 #code block to get data from csv
-$get_temdata {
+function get-temdata {
 	$global:csvpath = ''
-	$files[0].split("\")[0..($files.length)] | % {$csvpath += $_ + "\"}
-	set-location $csvpath
-	$global:csvdata = get-childitem -Name TJ_Etch* | Sort-Object -Descending -Property LastWriteTime | Select-Object -First 1 | import-csv
+	$files[0].split("\")[0..($files[0].split("\").length-2)] | % {$global:csvpath += $_ + "\"}
+	set-location $global:csvpath
+	$global:csvdata = import-csv (get-childitem TJ_Etch*.csv | ? {$_.mode -eq '-a----'})
 	#The keys below are going to match the filename in $files
 	$global:csv_keys = $csvdata | % {$_.Path.split("\")[-1]}
-	#The accepted filename keys are below
-	$global:file_keys = $files | % {$_.Path.split("\")[-1]}
-	#NEXT STEPS: where the csv_keys match the file_keys, grab the rest of the columns from the $csvdata {PC2PC, Tip2Tip, Depth, [waferID]}
+	#The filename keys are below
+	$global:file_keys = $files | % {$_.split("\")[-1]}
+	$global:tem_data = @()
+	for ($i=0;$i -lt $accepted_idxs.length;$i++) {
+		$global:tem_data += $csvdata | ? {$_.path.split("\")[-1] -like $file_keys[$accepted_idxs[$i]]}
+	}
 }
 
 #code block to fill the template with the data
 $fill_xls = {
 	$temxls = new-object -ComObject excel.application
-	$temurl = '##########'
+	$temurl = 'http://sharepoint/Etch_LSI/prc_eng_feol/SiteAssets/Lists/TJRG%20TEM%20Archive/AllItems/14nm_TJ_RG_pMTS_Scaling_Template.xlsx'
 	$temxls.Workbooks.Open($temurl,$false,$true)
 	#not done yet with this code block
-	#$temform = 
+	#use the global tem_data object to fill the template 
 }
 
 $accept_image = {
@@ -98,6 +101,7 @@ $accept_image = {
         $form.close()
         write-host "Accepted the following images:"
         $accepted_idxs | % {write-host $files[$_]}
+		get-temdata
     } else {
         $global:current_image_idx += 1
         update-bgimage
@@ -112,6 +116,7 @@ $reject_image = {
         $form.close()
         write-host "Accepted the following images:"
         $accepted_idxs | % {write-host $files[$_]}
+		get-temdata
     } else {
         $global:current_image_idx = $global:current_image_idx + 1
     }
