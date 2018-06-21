@@ -73,7 +73,7 @@ function get-temdata {
 	$global:csvpath = ''
 	$files[0].split("\")[0..($files[0].split("\").length-2)] | % {$global:csvpath += $_ + "\"}
 	set-location $global:csvpath
-	$global:csvdata = import-csv (get-childitem TJ_Etch*.csv | ? {$_.mode -eq '-a----'})
+	$global:csvdata = import-csv (get-childitem tj_etch*.csv | ? {(get-content $_)[0] -like "Image*"} | sort -descending lastwritetime | select -first 1)
 	#The keys below are going to match the filename in $files
 	$global:csv_keys = $csvdata | % {$_.Path.split("\")[-1]}
 	#The filename keys are below
@@ -81,16 +81,29 @@ function get-temdata {
 	$global:tem_data = @()
 	for ($i=0;$i -lt $accepted_idxs.length;$i++) {
 		$global:tem_data += $csvdata | ? {$_.path.split("\")[-1] -like $file_keys[$accepted_idxs[$i]]}
+		Add-Member -InputObject $tem_data[$i] -NotePropertyName "Wafer" $tem_data[$i].path.split("\")[2].substring(0,3)
 	}
 }
 
+
 #code block to fill the template with the data
-$fill_xls = {
-	$temxls = new-object -ComObject excel.application
+function fill-xls {
+	$global:temxls = new-object -ComObject excel.application
 	$temurl = 'http://sharepoint/Etch_LSI/prc_eng_feol/SiteAssets/Lists/TJRG%20TEM%20Archive/AllItems/14nm_TJ_RG_pMTS_Scaling_Template.xlsx'
 	$temxls.Workbooks.Open($temurl,$false,$true)
-	#not done yet with this code block
-	#use the global tem_data object to fill the template 
+
+	for($i=0;$i -lt $accepted_idxs.length;$i++) {
+		$d = $tem_data[$i]
+		#add and scale the image
+		$temxls.cells(3,3+2*$i).select()
+		$img = $temxls.activesheet.Shapes.AddPicture($files[$accepted_idxs[$i]],$false,$true,1+$temxls.activecell.left,1+$temxls.activecell.top,-1,-1)
+		$img.ScaleHeight(.10,0,0)
+		
+		$temxls.cells(4,3+2*$i).value = $tem_data[$i].PC2PC
+		$temxls.cells(5,3+2*$i).value = $tem_data[$i].Tip2Tip
+		$temxls.cells(7,3+2*$i).value = $tem_data[$i].Depth
+	}
+	$temxls.visible = $true
 }
 
 $accept_image = {
@@ -102,6 +115,7 @@ $accept_image = {
         write-host "Accepted the following images:"
         $accepted_idxs | % {write-host $files[$_]}
 		get-temdata
+		fill-xls
     } else {
         $global:current_image_idx += 1
         update-bgimage
@@ -117,6 +131,7 @@ $reject_image = {
         write-host "Accepted the following images:"
         $accepted_idxs | % {write-host $files[$_]}
 		get-temdata
+		fill-xls
     } else {
         $global:current_image_idx = $global:current_image_idx + 1
     }
@@ -144,3 +159,4 @@ $chgbut.add_click($reject_image)
 $chgbut.bringtofront()
 
 $form.ShowDialog()
+write-host "complete"
